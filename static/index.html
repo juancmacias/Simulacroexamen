@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Simulacro Auxiliar CM — Microsoft 365</title>
+<link rel="icon" type="image/png" href="/static/img/icono.png" />
+<link rel="apple-touch-icon" href="/static/img/icono.png" />
 <style>
   :root {
     --bg: #0f172a;
@@ -434,8 +436,9 @@ async function uploadBank(file) {
     status.style.color = "var(--ok)";
     status.textContent = `Banco "${data.label}" subido a tu sesión.`;
     await loadBankInfo();
-    $("bank-select").value = data.key;
-    $("bank-select").dispatchEvent(new Event("change"));
+    const sel = $("bank-select");
+    sel.value = [...sel.options].some(o => o.value === "all") ? "all" : data.key;
+    sel.dispatchEvent(new Event("change"));
   } catch (err) {
     status.style.color = "var(--ko)";
     status.textContent = err.message || "Error al subir el fichero";

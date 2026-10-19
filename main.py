@@ -2,10 +2,8 @@ import json
 import os
 import random
 import re
-import subprocess
 import tempfile
 import time
-import urllib.request
 import uuid
 from pathlib import Path
 
@@ -82,77 +80,26 @@ class GradeRequest(BaseModel):
 def list_banks(session_id: str = Depends(get_session_id)):
     """Lista los bancos subidos por esta sesion ('all' = unificado) y la configuracion."""
     bank = SESSION_STORE.get_bank(session_id)
+    banks = [{"key": b.key, "label": b.label, "count": b.count} for b in bank.list_banks()]
+    if len(banks) > 1:
+        total = sum(b["count"] for b in banks)
+        banks.insert(0, {"key": "all", "label": f"Todos los bancos mezclados ({total})", "count": total})
     return {
-        "banks": [
-            {"key": b.key, "label": b.label, "count": b.count}
-            for b in bank.list_banks()
-        ],
+        "banks": banks,
         "main_count": EXAM_CONFIG.main_count,
         "reserve_count": EXAM_CONFIG.reserve_count,
         "duration_minutes": EXAM_CONFIG.duration_minutes,
     }
 
 
-def _git(*args: str) -> str:
-    try:
-        out = subprocess.run(
-            ["git", *args], cwd=BASE_DIR, capture_output=True, text=True, timeout=5, check=True
-        )
-        return out.stdout.strip()
-    except (OSError, subprocess.SubprocessError):
-        return ""
-
-
-# Version desde git (tag o commit); en despliegues sin .git se puede fijar con APP_VERSION
-APP_VERSION = {
-    "version": os.environ.get("APP_VERSION") or _git("describe", "--tags", "--always") or "dev",
-    "commit": _git("rev-parse", "--short", "HEAD"),
-    "date": _git("log", "-1", "--format=%cs"),
-    "repo": "https://github.com/juancmacias/Simulacroexamen",
-}
-
-
-GITHUB_REPO = "juancmacias/Simulacroexamen"
-VERSION_CACHE_SECONDS = 60 * 60
-_version_cache: dict = {"at": 0.0, "data": None}
-
-
-def _github_version() -> dict | None:
-    """Ultimo tag (por numero de version) desde la API publica de GitHub."""
-    req = urllib.request.Request(
-        f"https://api.github.com/repos/{GITHUB_REPO}/tags?per_page=100",
-        headers={"Accept": "application/vnd.github+json", "User-Agent": "simulacro-app"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            tags = json.load(resp)
-    except (OSError, ValueError):
-        return None
-
-    def key(tag: dict):
-        return [int(n) for n in re.findall(r"\d+", tag["name"])]
-
-    if not tags:
-        return None
-    latest = max(tags, key=key)
-    return {
-        "version": latest["name"],
-        "commit": latest["commit"]["sha"][:7],
-        "date": "",
-        "repo": f"https://github.com/{GITHUB_REPO}",
-        "source": "github",
-    }
+# Version de la app: actualizar a mano en cada release (debe coincidir con el tag de git)
+APP_VERSION = "1.2.0"
+REPO_URL = "https://github.com/juancmacias/Simulacroexamen"
 
 
 @app.get("/api/version")
 def get_version():
-    """Version desde GitHub (cacheada 1 h); si falla, la version local de git."""
-    now = time.time()
-    if _version_cache["data"] is None or now - _version_cache["at"] > VERSION_CACHE_SECONDS:
-        _version_cache["data"] = _github_version()
-        _version_cache["at"] = now
-    return _version_cache["data"] or {**APP_VERSION, "source": "local"}
-
+    return {"version": APP_VERSION, "repo": REPO_URL}
 
 @app.get("/api/prompt-help")
 def get_prompt_help():
@@ -297,6 +244,15 @@ def grade_exam(req: GradeRequest):
 
 # --- Frontend estatico ---
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+
+ICON_PATH = BASE_DIR / "static" / "img" / "icono.png"
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    if not ICON_PATH.exists():
+        raise HTTPException(status_code=404)
+    return FileResponse(ICON_PATH, media_type="image/png")
 
 
 @app.get("/")

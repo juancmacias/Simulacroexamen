@@ -10,7 +10,10 @@ Aplicación web para realizar simulacros de examen tipo test a partir de bancos 
 - Orden de las opciones barajado en cada examen.
 - Corrección en el servidor con puntuación, penalización por error (por defecto 1/3) y explicaciones.
 - Se puede corregir el mismo examen varias veces y hacer simulacros ilimitados.
-- Ayuda integrada con el prompt para generar un banco de preguntas con una IA.
+- Ayuda integrada con el [prompt](prompt/prompt.md) para generar un banco de preguntas con una IA.
+- Con 2 o más bancos subidos aparece "Todos los bancos mezclados" como opción por defecto.
+- Footer con la versión de la app, enlazado al repositorio de GitHub.
+- Icono de la app (`static/img/icono.png`) usado como favicon.
 
 ## Estructura
 
@@ -19,6 +22,7 @@ main.py              API FastAPI y servidor estático
 passenger_wsgi.py    Entrada WSGI (Passenger) mediante a2wsgi
 utils/bank_loader.py Carga, normalización y selección de preguntas
 static/index.html    Interfaz de usuario
+static/img/icono.png Icono de la app (favicon)
 prompt/prompt.md     Prompt de ayuda para generar bancos de preguntas
 requirements.txt     Dependencias
 ```
@@ -48,7 +52,9 @@ La app queda en `http://localhost:8000`. El puerto se puede cambiar con la varia
 |--------|------|-------------|
 | GET | `/api/banks` | Lista los bancos de la sesión y la configuración |
 | POST | `/api/upload` | Sube un banco `.json` (multipart, campo `file`) |
-| GET | `/api/prompt-help` | Devuelve el texto de `prompt/prompt.md` |
+| GET | `/api/prompt-help` | Devuelve el texto de [prompt/prompt.md](prompt/prompt.md) |
+| GET | `/api/version` | Versión de la app (`APP_VERSION` en `main.py`) y URL del repo |
+| GET | `/favicon.ico` | Icono de la app (`static/img/icono.png`) |
 | GET | `/api/exam?bank=...&main_count=30&reserve_count=5` | Genera un examen (`bank=all` para todos) |
 | POST | `/api/grade` | Corrige un examen: `{exam_id, answers: {índice: letra}, wrong_penalty}` |
 
@@ -74,3 +80,18 @@ El prompt completo para generar un banco con una IA está en [prompt/prompt.md](
 
 - Los exámenes generados se guardan como archivos JSON en la carpeta temporal del sistema (`simulacro_exams`) y se eliminan a las 24 horas.
 - Los bancos subidos se mantienen en memoria del proceso: se pierden al reiniciar el servidor.
+
+## Versiones
+
+- La versión se define a mano en `APP_VERSION` de [main.py](main.py) y se muestra en el footer.
+- Cada release debe llevar el mismo número como tag de git:
+
+```bash
+git tag -a v1.2.0 -m "Versión 1.2.0"
+git push origin main
+git push origin v1.2.0
+```
+
+## Icono
+
+Coloca la imagen en `static/img/icono.png`. Se sirve en `/static/img/icono.png` y `/favicon.ico`, y se enlaza en el `<head>` de [static/index.html](static/index.html). Si el fichero no existe, el navegador no mostrará icono.
