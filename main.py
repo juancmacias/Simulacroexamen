@@ -5,6 +5,7 @@ import re
 import subprocess
 import tempfile
 import time
+import urllib.request
 import uuid
 from pathlib import Path
 
@@ -111,9 +112,46 @@ APP_VERSION = {
 }
 
 
+GITHUB_REPO = "juancmacias/Simulacroexamen"
+VERSION_CACHE_SECONDS = 60 * 60
+_version_cache: dict = {"at": 0.0, "data": None}
+
+
+def _github_version() -> dict | None:
+    """Ultimo tag (por numero de version) desde la API publica de GitHub."""
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{GITHUB_REPO}/tags?per_page=100",
+        headers={"Accept": "application/vnd.github+json", "User-Agent": "simulacro-app"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            tags = json.load(resp)
+    except (OSError, ValueError):
+        return None
+
+    def key(tag: dict):
+        return [int(n) for n in re.findall(r"\d+", tag["name"])]
+
+    if not tags:
+        return None
+    latest = max(tags, key=key)
+    return {
+        "version": latest["name"],
+        "commit": latest["commit"]["sha"][:7],
+        "date": "",
+        "repo": f"https://github.com/{GITHUB_REPO}",
+        "source": "github",
+    }
+
+
 @app.get("/api/version")
 def get_version():
-    return APP_VERSION
+    """Version desde GitHub (cacheada 1 h); si falla, la version local de git."""
+    now = time.time()
+    if _version_cache["data"] is None or now - _version_cache["at"] > VERSION_CACHE_SECONDS:
+        _version_cache["data"] = _github_version()
+        _version_cache["at"] = now
+    return _version_cache["data"] or {**APP_VERSION, "source": "local"}
 
 
 @app.get("/api/prompt-help")
