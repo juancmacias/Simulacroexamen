@@ -1,0 +1,23 @@
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
+PassengerAppRoot "/home/ip3tpt81nrn8/simulacro"
+PassengerBaseURI "/"
+PassengerPython "/home/ip3tpt81nrn8/virtualenv/simulacro/3.11/bin/python"
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
+# DO NOT REMOVE OR MODIFY. CLOUDLINUX ENV VARS CONFIGURATION BEGIN
+<IfModule Litespeed>
+</IfModule>
+# DO NOT REMOVE OR MODIFY. CLOUDLINUX ENV VARS CONFIGURATION END
+
+
+Options -MultiViews
+RewriteEngine On
+RewriteBase /
+
+# Si es un archivo o carpeta real, déjalo pasar (ej. assets de css/js)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Forzar a Apache a enviar la petición a Passenger procesando el script correctamente
+RewriteRule ^(.*)$ passenger_wsgi.py [QSA,L,H=passenger-application]
+
+

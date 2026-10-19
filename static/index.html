@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Simulacro Auxiliar CM — Microsoft 365</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --bg-card: #1e293b;
+    --bg-soft: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --accent-dark: #0284c7;
+    --ok: #22c55e;
+    --ko: #ef4444;
+    --warn: #f59e0b;
+    --reserve: #a78bfa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .screen { display: none; max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  .screen.active { display: block; }
+
+  /* ---------- Pantalla de inicio ---------- */
+  .hero {
+    background: linear-gradient(135deg, #1e293b 0%, #0c4a6e 100%);
+    border: 1px solid var(--bg-soft);
+    border-radius: 16px;
+    padding: 40px 32px;
+    margin-top: 40px;
+    text-align: center;
+  }
+  .hero h1 { font-size: 1.9rem; margin-bottom: 8px; }
+  .hero p.sub { color: var(--muted); margin-bottom: 28px; }
+  .rules {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px; margin-bottom: 30px; text-align: left;
+  }
+  .rule {
+    background: rgba(15, 23, 42, .55);
+    border: 1px solid var(--bg-soft);
+    border-radius: 12px; padding: 16px;
+  }
+  .rule .num { font-size: 1.7rem; font-weight: 700; color: var(--accent); }
+  .rule .lbl { font-size: .9rem; color: var(--muted); }
+  .btn {
+    background: var(--accent-dark); color: #fff; border: none; border-radius: 10px;
+    padding: 14px 34px; font-size: 1.05rem; font-weight: 600; cursor: pointer;
+    transition: background .15s, transform .1s;
+  }
+  .btn:hover { background: var(--accent); color: #082f49; }
+  .btn:active { transform: scale(.97); }
+  .btn.secondary { background: var(--bg-soft); }
+  .btn.secondary:hover { background: #475569; color: var(--text); }
+  .btn.danger { background: #b91c1c; }
+  .btn.danger:hover { background: var(--ko); color: #fff; }
+
+  /* ---------- Cabecera examen ---------- */
+  .exam-header {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--bg-card); border: 1px solid var(--bg-soft); border-radius: 12px;
+    padding: 12px 18px; margin-bottom: 18px;
+  }
+  .timer {
+    font-variant-numeric: tabular-nums;
+    font-size: 1.6rem; font-weight: 700; letter-spacing: 1px;
+  }
+  .timer.low { color: var(--ko); animation: blink 1s step-start infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  .progress-info { color: var(--muted); font-size: .95rem; }
+
+  /* ---------- Layout examen ---------- */
+  .exam-layout { display: grid; grid-template-columns: 1fr 240px; gap: 18px; }
+  @media (max-width: 860px) { .exam-layout { grid-template-columns: 1fr; } }
+
+  .qcard {
+    background: var(--bg-card); border: 1px solid var(--bg-soft); border-radius: 14px; padding: 26px;
+  }
+  .qmeta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .qnum { font-size: 1.1rem; font-weight: 700; }
+  .badge {
+    font-size: .75rem; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+    background: var(--bg-soft); color: var(--muted);
+  }
+  .badge.reserve { background: rgba(167, 139, 250, .18); color: var(--reserve); }
+  .qtext { font-size: 1.12rem; line-height: 1.55; margin-bottom: 22px; }
+  .opt {
+    display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left;
+    background: var(--bg); border: 1px solid var(--bg-soft); border-radius: 10px;
+    padding: 13px 15px; margin-bottom: 10px; cursor: pointer; color: var(--text);
+    font-size: 1rem; transition: border-color .12s, background .12s;
+  }
+  .opt:hover { border-color: var(--accent); }
+  .opt.selected { border-color: var(--accent); background: rgba(56, 189, 248, .12); }
+  .opt .letter {
+    flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%;
+    display: grid; place-items: center; font-weight: 700; font-size: .85rem;
+    background: var(--bg-soft); color: var(--text);
+  }
+  .opt.selected .letter { background: var(--accent); color: #082f49; }
+
+  .qnav-btns { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 20px; }
+  .qnav-btns .spacer { flex: 1; }
+
+  /* ---------- Navegador de preguntas ---------- */
+  .navigator {
+    background: var(--bg-card); border: 1px solid var(--bg-soft); border-radius: 14px;
+    padding: 16px; height: fit-content; position: sticky; top: 92px;
+  }
+  .navigator h3 { font-size: .9rem; color: var(--muted); margin-bottom: 10px; }
+  .nav-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin-bottom: 14px; }
+  .nav-grid button {
+    aspect-ratio: 1; border-radius: 8px; border: 1px solid var(--bg-soft);
+    background: var(--bg); color: var(--text); font-size: .82rem; font-weight: 600;
+    cursor: pointer; transition: all .1s;
+  }
+  .nav-grid button:hover { border-color: var(--accent); }
+  .nav-grid button.answered { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
+  .nav-grid button.current { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .nav-grid button.flagged { box-shadow: inset 0 -4px 0 var(--warn); }
+  .nav-grid button.reserve-btn { border-style: dashed; color: var(--reserve); }
+  .nav-grid button.reserve-btn.answered { background: #6d28d9; border-style: solid; border-color: #6d28d9; color: #fff; }
+  .legend { font-size: .75rem; color: var(--muted); display: grid; gap: 4px; }
+  .legend span::before { content: "●"; margin-right: 6px; }
+  .legend .l-ans::before { color: var(--accent-dark); }
+  .legend .l-flag::before { color: var(--warn); }
+  .legend .l-res::before { color: var(--reserve); }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(2, 6, 23, .75);
+    display: none; place-items: center; z-index: 100;
+  }
+  .modal-overlay.open { display: grid; }
+  .modal {
+    background: var(--bg-card); border: 1px solid var(--bg-soft); border-radius: 14px;
+    padding: 28px; max-width: 430px; width: calc(100% - 32px);
+  }
+  .modal h2 { margin-bottom: 12px; }
+  .modal p { color: var(--muted); margin-bottom: 8px; line-height: 1.5; }
+  .modal .modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+  /* ---------- Resultados ---------- */
+  .result-summary {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px; margin: 22px 0;
+  }
+  .stat {
+    background: var(--bg-card); border: 1px solid var(--bg-soft); border-radius: 12px;
+    padding: 18px; text-align: center;
+  }
+  .stat .v { font-size: 1.9rem; font-weight: 700; }
+  .stat .t { color: var(--muted); font-size: .85rem; }
+  .stat.ok .v { color: var(--ok); }
+  .stat.ko .v { color: var(--ko); }
+  .stat.blank .v { color: var(--muted); }
+  .stat.grade .v { color: var(--accent); }
+
+  .note-box {
+    background: rgba(56, 189, 248, .08); border: 1px solid rgba(56, 189, 248, .3);
+    border-radius: 10px; padding: 14px 18px; color: var(--muted);
+    font-size: .92rem; line-height: 1.5; margin-bottom: 22px;
+  }
+
+  .filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .filters button {
+    background: var(--bg-card); border: 1px solid var(--bg-soft); color: var(--muted);
+    border-radius: 999px; padding: 7px 16px; font-size: .85rem; cursor: pointer;
+  }
+  .filters button.on { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
+
+  .review-item {
+    background: var(--bg-card); border: 1px solid var(--bg-soft); border-radius: 12px;
+    padding: 18px 20px; margin-bottom: 12px;
+  }
+  .review-item.correct { border-left: 4px solid var(--ok); }
+  .review-item.wrong { border-left: 4px solid var(--ko); }
+  .review-item.blank { border-left: 4px solid var(--bg-soft); }
+  .review-item .rtext { font-weight: 600; margin: 6px 0 12px; line-height: 1.45; }
+  .review-opt { font-size: .92rem; padding: 5px 10px; border-radius: 6px; margin-bottom: 4px; color: var(--muted); }
+  .review-opt.is-correct { background: rgba(34, 197, 94, .12); color: var(--ok); font-weight: 600; }
+  .review-opt.is-user-wrong { background: rgba(239, 68, 68, .12); color: var(--ko); }
+  .review-opt .tag { font-size: .75rem; font-weight: 700; margin-left: 8px; }
+  .expl {
+    margin-top: 10px; font-size: .88rem; color: var(--muted);
+    border-top: 1px dashed var(--bg-soft); padding-top: 10px;
+  }
+  .expl b { color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- ==================== INICIO ==================== -->
+<section id="screen-start" class="screen active">
+  <div class="hero">
+    <h1>📝 Simulacro de examen</h1>
+    <p class="sub" id="bank-scope">Puedes usar para cualquier tipo de examen</p>
+    <div class="rules">
+      <div class="rule"><div class="num" id="r-total-bank">0</div><div class="lbl">preguntas en el banco</div></div>
+      <div class="rule">
+        <select id="question-count-select" class="num" aria-label="Preguntas principales" style="width:100%;background:transparent;border:0;color:var(--accent);font-family:inherit;font-weight:700;cursor:pointer;">
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="30" selected>30</option>
+          <option value="40">40</option>
+          <option value="50">50</option>
+        </select>
+        <div class="lbl">preguntas principales al azar</div>
+      </div>
+      <div class="rule">
+        <select id="reserve-count-select" class="num" aria-label="Preguntas de reserva" style="width:100%;background:transparent;border:0;color:var(--accent);font-family:inherit;font-weight:700;cursor:pointer;">
+          <option value="0">+0</option>
+          <option value="1">+1</option>
+          <option value="2">+2</option>
+          <option value="3">+3</option>
+          <option value="4">+4</option>
+          <option value="5" selected>+5</option>
+          <option value="6">+6</option>
+          <option value="7">+7</option>
+          <option value="8">+8</option>
+          <option value="9">+9</option>
+          <option value="10">+10</option>
+        </select>
+        <div class="lbl">preguntas de reserva</div>
+      </div>
+      <div class="rule">
+        <select id="penalty-select" class="num" aria-label="Penalización por fallo" style="width:100%;background:transparent;border:0;color:var(--accent);font-family:inherit;font-weight:700;cursor:pointer;">
+          <option value="0">0 (Sin)</option>
+          <option value="0.16666666666666666">-1/6</option>
+          <option value="0.2">-1/5</option>
+          <option value="0.25">-1/4</option>
+          <option value="0.3333333333333333" selected>-1/3</option>
+          <option value="0.5">-1/2</option>
+        </select>
+        <div class="lbl">penalización por fallo</div>
+      </div>
+      <div class="rule"><div class="num" id="r-duration">30:00</div><div class="lbl">minutos para contestar</div></div>
+    </div>
+    <p class="sub" style="max-width:620px;margin:0 auto 26px;">
+      Selecciona de 10 a 50 preguntas principales (computan para la nota) y de 0 a 10 de reserva.
+      Cada acierto suma 1 punto. Las preguntas sin contestar valen 0 puntos. Los fallos descuentan según la escala seleccionada (de 0 a -1/2).
+      1 minuto por pregunta. El examen se envía automáticamente cuando el cronómetro llega a cero.
+    </p>
+    <div style="max-width:420px;margin:0 auto 18px;text-align:left;">
+      <label for="bank-select" style="display:block;font-size:.85rem;font-weight:600;color:#9a9ab0;margin-bottom:6px;">Banco de preguntas:</label>
+      <select id="bank-select" style="width:100%;padding:11px 12px;border:2px solid #3a3a4a;border-radius:10px;background:#1a1a22;color:#e8e8ee;font-size:.92rem;font-family:inherit;cursor:pointer;"></select>
+      <p id="bank-empty-msg" style="display:none;color:var(--warn);font-size:.82rem;margin-top:6px;">
+        Aún no has subido ningún banco. Sube un fichero .json para empezar.
+      </p>
+    </div>
+    <div style="max-width:420px;margin:0 auto 18px;text-align:left;">
+      <label for="bank-upload" style="display:block;font-size:.85rem;font-weight:600;color:#9a9ab0;margin-bottom:6px;">
+        Subir banco (.json) a tu sesión:
+        <button type="button" id="btn-prompt-help" title="¿Cómo genero el JSON?" style="margin-left:6px;width:20px;height:20px;border-radius:50%;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:.75rem;line-height:1;cursor:pointer;vertical-align:middle;">?</button>
+      </label>
+      <div id="bank-dropzone" style="border:2px dashed #3a3a4a;border-radius:10px;padding:60px 12px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:#1a1a22;">
+        <p style="font-size:.85rem;color:#9a9ab0;margin:0;">Arrastra aquí tu fichero .json o haz clic para seleccionarlo</p>
+        <input type="file" id="bank-upload" accept=".json" style="display:none;" />
+      </div>
+      <p id="upload-status" style="font-size:.82rem;margin-top:6px;color:var(--muted);"></p>
+    </div>
+    <button class="btn" id="btn-start">▶ Comenzar simulacro</button>
+  </div>
+</section>
+
+<!-- ==================== MODAL AYUDA PROMPT ==================== -->
+<div id="prompt-help-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--bg-card);border:1px solid var(--bg-soft);border-radius:12px;max-width:720px;width:100%;max-height:80vh;display:flex;flex-direction:column;">
+    <div style="display:flex;flex-direction:column;gap:10px;padding:14px 18px;border-bottom:1px solid var(--bg-soft);">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+        <h3 style="font-size:1rem;margin:0;">Cómo generar el banco de preguntas (.json)</h3>
+        <button type="button" id="btn-prompt-help-close" style="background:transparent;border:none;color:var(--muted);font-size:1.3rem;line-height:1;cursor:pointer;">×</button>
+      </div>
+      <p style="margin:0;font-size:.85rem;color:var(--muted);">Copia y pega en chatgpt, cambia el texto TEMA Y NUMERO DE PREGUNTAS que esta al final del texto, y se genera las preguntas que necesitas, subelo aqui.</p>
+      <button type="button" id="btn-prompt-help-copy" style="align-self:flex-start;background:var(--accent);border:none;color:#0f172a;font-size:.78rem;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer;">Copiar</button>
+    </div>
+    <pre id="prompt-help-content" style="margin:0;padding:16px 18px;overflow:auto;white-space:pre-wrap;font-family:inherit;font-size:.82rem;color:var(--text);"></pre>
+  </div>
+</div>
+
+
+<!-- ==================== EXAMEN ==================== -->
+<section id="screen-exam" class="screen">
+  <div class="exam-header">
+    <div>
+      <div class="timer" id="timer">35:00</div>
+      <div class="progress-info" id="progress-info">0 de 35 contestadas</div>
+    </div>
+    <button class="btn danger" id="btn-finish">Finalizar examen</button>
+  </div>
+
+  <div class="exam-layout">
+    <div class="qcard">
+      <div class="qmeta">
+        <span class="qnum" id="q-number">Pregunta 1 de 0030</span>
+        <span class="badge" id="q-app">Windows 11</span>
+        <span class="badge" id="q-theme">Tema 16</span>
+        <span class="badge reserve" id="q-reserve" style="display:none">RESERVA</span>
+      </div>
+      <div class="qtext" id="q-text"></div>
+      <div id="q-options"></div>
+      <div class="qnav-btns">
+        <button class="btn secondary" id="btn-prev">← Anterior</button>
+        <button class="btn secondary" id="btn-flag">🚩 Marcar para repaso</button>
+        <div class="spacer"></div>
+        <button class="btn" id="btn-next">Siguiente →</button>
+      </div>
+    </div>
+
+    <aside class="navigator">
+      <h3>PREGUNTAS</h3>
+      <div class="nav-grid" id="nav-main"></div>
+      <h3>RESERVA</h3>
+      <div class="nav-grid" id="nav-reserve"></div>
+      <div class="legend">
+        <span class="l-ans">Contestada</span>
+        <span class="l-flag">Marcada para repaso</span>
+        <span class="l-res">Reserva</span>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ==================== RESULTADOS ==================== -->
+<section id="screen-results" class="screen">
+  <h1 style="margin-top:10px;">📊 Resultados del simulacro</h1>
+  <div class="result-summary" id="summary"></div>
+  <div class="note-box" id="reserve-note"></div>
+  <div class="filters" id="filters">
+    <button data-f="all" class="on">Todas</button>
+    <button data-f="wrong">Falladas</button>
+    <button data-f="blank">Sin contestar</button>
+    <button data-f="reserve">Reserva</button>
+  </div>
+  <div id="review-list"></div>
+  <div style="text-align:center;margin-top:34px;">
+    <button class="btn" id="btn-new">🔁 Nuevo simulacro</button>
+  </div>
+</section>
+
+<!-- ==================== MODAL CONFIRMACIÓN ==================== -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2 id="modal-title">¿Finalizar el examen?</h2>
+    <p id="modal-body"></p>
+    <div class="modal-btns">
+      <button class="btn secondary" id="modal-cancel">Seguir contestando</button>
+      <button class="btn danger" id="modal-ok">Entregar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// ---------------- Estado ----------------
+const state = {
+  examId: null,
+  questions: [],
+  mainCount: 30,
+  answers: {},      // index -> "A".."D"
+  flagged: new Set(),
+  current: 0,
+  duration: 35 * 60,
+  remaining: 35 * 60,
+  timerId: null,
+  finished: false,
+  startedAt: null,
+  results: null,
+};
+
+const $ = (id) => document.getElementById(id);
+
+// ---------------- Utilidades ----------------
+function fmtTime(s) {
+  const m = Math.floor(s / 60), ss = s % 60;
+  return String(m).padStart(2, "0") + ":" + String(ss).padStart(2, "0");
+}
+function showScreen(name) {
+  document.querySelectorAll(".screen").forEach((el) => el.classList.remove("active"));
+  $("screen-" + name).classList.add("active");
+  window.scrollTo({ top: 0 });
+}
+
+// ---------------- Inicio ----------------
+async function loadBankInfo() {
+  try {
+    const info = await (await fetch("/api/banks")).json();
+    const sel = $("bank-select");
+    const questionCount = $("question-count-select");
+    const reserveCount = $("reserve-count-select");
+    const emptyMsg = $("bank-empty-msg");
+    sel.innerHTML = "";
+    info.banks.forEach(b => {
+      const opt = document.createElement("option");
+      opt.value = b.key;
+      opt.textContent = b.label;
+      sel.appendChild(opt);
+    });
+    const hasBanks = info.banks.length > 0;
+    sel.style.display = hasBanks ? "" : "none";
+    emptyMsg.style.display = hasBanks ? "none" : "block";
+    $("btn-start").disabled = !hasBanks;
+    const upd = () => {
+      const b = info.banks.find(x => x.key === sel.value);
+      if (b) $("r-total-bank").textContent = b.count;
+      $("r-duration").textContent = (Number(questionCount.value) + Number(reserveCount.value)) + ":00";
+    };
+    sel.addEventListener("change", upd);
+    questionCount.addEventListener("change", upd);
+    reserveCount.addEventListener("change", upd);
+    upd();
+  } catch { /* silencioso */ }
+}
+
+async function uploadBank(file) {
+  const status = $("upload-status");
+  status.style.color = "var(--muted)";
+  status.textContent = "Subiendo " + file.name + "…";
+  try {
+    const form = new FormData();
+    form.append("file", file);
+    const response = await fetch("/api/upload", { method: "POST", body: form });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Error al subir el fichero");
+    status.style.color = "var(--ok)";
+    status.textContent = `Banco "${data.label}" subido a tu sesión.`;
+    await loadBankInfo();
+    $("bank-select").value = data.key;
+    $("bank-select").dispatchEvent(new Event("change"));
+  } catch (err) {
+    status.style.color = "var(--ko)";
+    status.textContent = err.message || "Error al subir el fichero";
+  }
+}
+$("bank-upload").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) uploadBank(file);
+  e.target.value = "";
+});
+
+const dropzone = $("bank-dropzone");
+dropzone.addEventListener("click", () => $("bank-upload").click());
+["dragenter", "dragover"].forEach((evt) => {
+  dropzone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropzone.style.borderColor = "var(--accent)";
+    dropzone.style.background = "#1e2436";
+  });
+});
+["dragleave", "drop"].forEach((evt) => {
+  dropzone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropzone.style.borderColor = "#3a3a4a";
+    dropzone.style.background = "#1a1a22";
+  });
+});
+dropzone.addEventListener("drop", (e) => {
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (file) uploadBank(file);
+});
+
+let promptHelpText = null;
+async function openPromptHelp() {
+  const modal = $("prompt-help-modal");
+  const content = $("prompt-help-content");
+  modal.style.display = "flex";
+  if (promptHelpText === null) {
+    content.textContent = "Cargando…";
+    try {
+      const response = await fetch("/api/prompt-help");
+      const data = await response.json();
+      promptHelpText = data.content || "No se ha encontrado el texto de ayuda.";
+    } catch {
+      promptHelpText = "No se ha podido cargar el texto de ayuda.";
+    }
+  }
+  content.textContent = promptHelpText;
+}
+function closePromptHelp() {
+  $("prompt-help-modal").style.display = "none";
+}
+$("btn-prompt-help").addEventListener("click", openPromptHelp);
+$("btn-prompt-help-close").addEventListener("click", closePromptHelp);
+$("prompt-help-modal").addEventListener("click", (e) => {
+  if (e.target.id === "prompt-help-modal") closePromptHelp();
+});
+$("btn-prompt-help-copy").addEventListener("click", async () => {
+  const btn = $("btn-prompt-help-copy");
+  try {
+    await navigator.clipboard.writeText(promptHelpText || "");
+    const original = btn.textContent;
+    btn.textContent = "¡Copiado!";
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  } catch {
+    btn.textContent = "Error al copiar";
+  }
+});
+
+
+async function startExam() {
+  $("btn-start").disabled = true;
+  $("btn-start").textContent = "Generando examen…";
+  try {
+    const bank = $("bank-select").value;
+    const mainCount = $("question-count-select").value;
+    const reserveCount = $("reserve-count-select").value;
+    state.wrongPenalty = parseFloat($("penalty-select").value) || 0;
+    const response = await fetch(
+      "/api/exam?bank=" + encodeURIComponent(bank) + "&main_count=" + encodeURIComponent(mainCount) +
+      "&reserve_count=" + encodeURIComponent(reserveCount)
+    );
+    if (!response.ok) throw new Error((await response.json()).detail || "Error al generar el examen");
+    const data = await response.json();
+    state.examId = data.exam_id;
+    state.questions = data.questions;
+    state.mainCount = data.main_count;
+    state.duration = data.duration_seconds;
+    state.remaining = data.duration_seconds;
+    state.answers = {};
+    state.flagged = new Set();
+    state.current = 0;
+    state.finished = false;
+    state.results = null;
+    state.startedAt = Date.now();
+
+    buildNavigator();
+    renderQuestion(0);
+    updateTimerDisplay();
+    showScreen("exam");
+    state.timerId = setInterval(tick, 1000);
+  } catch (e) {
+    alert("No se pudo generar el examen: " + e.message);
+  } finally {
+    $("btn-start").disabled = false;
+    $("btn-start").textContent = "▶ Comenzar simulacro";
+  }
+}
+
+// ---------------- Cronómetro ----------------
+function tick() {
+  state.remaining--;
+  updateTimerDisplay();
+  if (state.remaining <= 0) finishExam(true);
+}
+function updateTimerDisplay() {
+  const t = $("timer");
+  t.textContent = fmtTime(Math.max(0, state.remaining));
+  t.classList.toggle("low", state.remaining <= 5 * 60);
+}
+
+// ---------------- Navegador ----------------
+function buildNavigator() {
+  const navMain = $("nav-main"), navRes = $("nav-reserve");
+  navMain.innerHTML = ""; navRes.innerHTML = "";
+  state.questions.forEach((q, i) => {
+    const b = document.createElement("button");
+    b.textContent = q.reserve ? "R" + (i - state.mainCount + 1) : String(i + 1);
+    if (q.reserve) b.classList.add("reserve-btn");
+    b.addEventListener("click", () => renderQuestion(i));
+    (q.reserve ? navRes : navMain).appendChild(b);
+  });
+}
+function refreshNavigator() {
+  const all = [...$("nav-main").children, ...$("nav-reserve").children];
+  state.questions.forEach((q, i) => {
+    const b = all[i];
+    b.classList.toggle("answered", state.answers[i] != null);
+    b.classList.toggle("current", i === state.current);
+    b.classList.toggle("flagged", state.flagged.has(i));
+  });
+  const answered = Object.keys(state.answers).length;
+  $("progress-info").textContent = answered + " de " + state.questions.length + " contestadas";
+}
+
+// ---------------- Pregunta actual ----------------
+function renderQuestion(i) {
+  state.current = i;
+  const q = state.questions[i];
+  const isReserve = q.reserve;
+  $("q-number").textContent = isReserve
+    ? "Reserva " + (i - state.mainCount + 1) + " de " + (state.questions.length - state.mainCount)
+    : "Pregunta " + (i + 1) + " de " + state.mainCount;
+  $("q-app").textContent = q.application || "";
+  $("q-theme").textContent = q.theme ? "Tema " + q.theme : "";
+  $("q-reserve").style.display = isReserve ? "" : "none";
+  $("q-text").textContent = q.text;
+  $("btn-flag").textContent = state.flagged.has(i) ? "🚩 Quitar marca de repaso" : "🚩 Marcar para repaso";
+
+  const box = $("q-options");
+  box.innerHTML = "";
+  for (const letter of ["A", "B", "C", "D"]) {
+    if (!(letter in q.options)) continue;
+    const btn = document.createElement("button");
+    btn.className = "opt" + (state.answers[i] === letter ? " selected" : "");
+    btn.innerHTML = '<span class="letter">' + letter + "</span><span></span>";
+    btn.lastChild.textContent = q.options[letter];
+    btn.addEventListener("click", () => {
+      if (state.finished) return;
+      if (state.answers[i] === letter) delete state.answers[i]; // clic de nuevo = desmarcar
+      else state.answers[i] = letter;
+      renderQuestion(i);
+    });
+    box.appendChild(btn);
+  }
+  $("btn-prev").disabled = i === 0;
+  $("btn-next").disabled = i === state.questions.length - 1;
+  refreshNavigator();
+}
+
+// ---------------- Finalizar ----------------
+function askFinish() {
+  const total = state.questions.length;
+  const answered = Object.keys(state.answers).length;
+  $("modal-body").textContent =
+    "Has contestado " + answered + " de " + total + " preguntas (" +
+    (total - answered) + " sin contestar). Tiempo restante: " + fmtTime(state.remaining) + ".";
+  $("modal").classList.add("open");
+}
+
+async function finishExam(auto) {
+  if (state.finished) return;
+  state.finished = true;
+  clearInterval(state.timerId);
+  $("modal").classList.remove("open");
+
+  const penalty = state.wrongPenalty !== undefined ? state.wrongPenalty : (parseFloat($("penalty-select") ? $("penalty-select").value : 0) || 0);
+  const payload = { exam_id: state.examId, answers: {}, wrong_penalty: penalty };
+  for (const [k, v] of Object.entries(state.answers)) payload.answers[k] = v;
+
+  try {
+    const res = await fetch("/api/grade", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || "Error al corregir");
+    state.results = await res.json();
+    renderResults(auto);
+    showScreen("results");
+  } catch (e) {
+    state.finished = false;
+    state.timerId = setInterval(tick, 1000);
+    alert("Error al corregir el examen: " + e.message);
+  }
+}
+
+// ---------------- Resultados ----------------
+function getPenaltyText(rate) {
+  if (!rate || rate === 0) return "Sin penalización";
+  if (Math.abs(rate - 0.16666666666666666) < 0.01) return "-1/6 por fallo";
+  if (Math.abs(rate - 0.2) < 0.01) return "-1/5 por fallo";
+  if (Math.abs(rate - 0.25) < 0.01) return "-1/4 por fallo";
+  if (Math.abs(rate - 0.3333333333333333) < 0.01) return "-1/3 por fallo";
+  if (Math.abs(rate - 0.5) < 0.01) return "-1/2 por fallo";
+  return "-" + rate.toFixed(2) + " por fallo";
+}
+
+function renderResults(auto) {
+  const s = state.results.score;
+  const usedSec = Math.min(state.duration, Math.round((Date.now() - state.startedAt) / 1000));
+  $("summary").innerHTML = "";
+  const penaltyDeduction = s.main.penalty_deduction || 0;
+  const penaltyText = getPenaltyText(s.main.wrong_penalty_rate);
+
+  const stats = [
+    { v: s.main.grade_over_10.toFixed(2), t: "Nota (sobre 10)", cls: "grade" },
+    { v: s.main.correct, t: "Aciertos (+1 pt c/u)", cls: "ok" },
+    { v: s.main.wrong, t: "Errores (" + (penaltyDeduction > 0 ? "-" + penaltyDeduction.toFixed(2) : "0") + " pts)", cls: "ko" },
+    { v: s.main.blank, t: "Sin contestar (0 pts)", cls: "blank" },
+    { v: fmtTime(usedSec), t: auto ? "Tiempo agotado" : "Tiempo empleado", cls: "" },
+  ];
+  for (const st of stats) {
+    const d = document.createElement("div");
+    d.className = "stat " + st.cls;
+    d.innerHTML = '<div class="v"></div><div class="t"></div>';
+    d.querySelector(".v").textContent = st.v;
+    d.querySelector(".t").textContent = st.t;
+    $("summary").appendChild(d);
+  }
+  $("reserve-note").innerHTML =
+    "📊 <b>Desglose de nota:</b> " + s.main.correct + " aciertos (+ " + s.main.correct + " pts), " +
+    s.main.wrong + " fallos (" + (penaltyDeduction > 0 ? "-" + penaltyDeduction.toFixed(2) : "0") + " pts [" + penaltyText + "]), " +
+    s.main.blank + " sin respuesta (0 pts). Puntuación neta: <b>" + s.main.net_points.toFixed(2) + " / " + s.main.total + " pts</b>.<br/>" +
+    "ℹ️ <b>Reserva:</b> " + s.reserve.correct + " aciertos, " + s.reserve.wrong +
+    " errores y " + s.reserve.blank + " sin contestar de las " + s.reserve.total +
+    " preguntas de reserva. No computan en la nota salvo anulación de alguna pregunta principal.";
+
+  renderReview("all");
+}
+
+function renderReview(filter) {
+  document.querySelectorAll("#filters button").forEach((b) =>
+    b.classList.toggle("on", b.dataset.f === filter)
+  );
+  const list = $("review-list");
+  list.innerHTML = "";
+
+  for (const r of state.results.results) {
+    const isBlank = r.user_answer == null;
+    if (filter === "wrong" && (r.is_correct || isBlank || r.reserve)) continue;
+    if (filter === "blank" && (!isBlank || r.reserve)) continue;
+    if (filter === "reserve" && !r.reserve) continue;
+
+    const item = document.createElement("div");
+    item.className = "review-item " + (r.is_correct ? "correct" : isBlank ? "blank" : "wrong");
+
+    const label = r.reserve
+      ? "Reserva " + (r.index - state.mainCount + 1)
+      : "Pregunta " + (r.index + 1);
+    const status = r.is_correct ? "✅ Correcta" : isBlank ? "⬜ Sin contestar" : "❌ Incorrecta";
+
+    let html =
+      '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;">' +
+      "<small>" + label + " · " + (r.application || "") +
+      (r.theme ? " · Tema " + r.theme : "") + " · " + r.id + "</small>" +
+      "<small><b>" + status + "</b></small></div>" +
+      '<div class="rtext"></div>';
+
+    const optsHtml = [];
+    for (const letter of ["A", "B", "C", "D"]) {
+      if (!(letter in r.options)) continue;
+      let cls = "review-opt", tag = "";
+      if (letter === r.correct_answer) { cls += " is-correct"; tag = '<span class="tag">✔ correcta</span>'; }
+      if (letter === r.user_answer && !r.is_correct) { cls += " is-user-wrong"; tag = '<span class="tag">✘ tu respuesta</span>'; }
+      optsHtml.push({ cls, letter, text: r.options[letter], tag });
+    }
+
+    item.innerHTML = html;
+    item.querySelector(".rtext").textContent = r.text;
+    for (const o of optsHtml) {
+      const div = document.createElement("div");
+      div.className = o.cls;
+      div.innerHTML = "<b>" + o.letter + ")</b> <span></span>" + o.tag;
+      div.querySelector("span").textContent = o.text;
+      item.appendChild(div);
+    }
+    if (r.explanation) {
+      const ex = document.createElement("div");
+      ex.className = "expl";
+      ex.innerHTML = "<b>Explicación:</b> <span></span>";
+      ex.querySelector("span").textContent = r.explanation;
+      item.appendChild(ex);
+    }
+    list.appendChild(item);
+  }
+
+  if (!list.children.length) {
+    list.innerHTML = '<div class="note-box">No hay preguntas en esta categoría. 🎉</div>';
+  }
+}
+
+// ---------------- Eventos ----------------
+$("btn-start").addEventListener("click", startExam);
+$("btn-prev").addEventListener("click", () => { if (state.current > 0) renderQuestion(state.current - 1); });
+$("btn-next").addEventListener("click", () => { if (state.current < state.questions.length - 1) renderQuestion(state.current + 1); });
+$("btn-flag").addEventListener("click", () => {
+  state.flagged.has(state.current) ? state.flagged.delete(state.current) : state.flagged.add(state.current);
+  renderQuestion(state.current);
+});
+$("btn-finish").addEventListener("click", askFinish);
+$("modal-cancel").addEventListener("click", () => $("modal").classList.remove("open"));
+$("modal-ok").addEventListener("click", () => finishExam(false));
+$("btn-new").addEventListener("click", () => showScreen("start"));
+$("filters").addEventListener("click", (e) => {
+  if (e.target.dataset.f) renderReview(e.target.dataset.f);
+});
+
+// Atajos de teclado: A-D responder, flechas navegar
+document.addEventListener("keydown", (e) => {
+  if (!$("screen-exam").classList.contains("active") || state.finished) return;
+  const k = e.key.toUpperCase();
+  if (["A", "B", "C", "D"].includes(k)) {
+    const opts = $("q-options").children;
+    const idx = k.charCodeAt(0) - 65;
+    if (opts[idx]) opts[idx].click();
+  } else if (e.key === "ArrowRight") $("btn-next").click();
+  else if (e.key === "ArrowLeft") $("btn-prev").click();
+});
+
+// Aviso al intentar cerrar/recargar durante el examen
+window.addEventListener("beforeunload", (e) => {
+  if ($("screen-exam").classList.contains("active") && !state.finished) {
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+
+loadBankInfo();
+</script>
+</body>
+</html>
