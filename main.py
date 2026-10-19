@@ -2,6 +2,7 @@ import json
 import os
 import random
 import re
+import subprocess
 import tempfile
 import time
 import uuid
@@ -89,6 +90,30 @@ def list_banks(session_id: str = Depends(get_session_id)):
         "reserve_count": EXAM_CONFIG.reserve_count,
         "duration_minutes": EXAM_CONFIG.duration_minutes,
     }
+
+
+def _git(*args: str) -> str:
+    try:
+        out = subprocess.run(
+            ["git", *args], cwd=BASE_DIR, capture_output=True, text=True, timeout=5, check=True
+        )
+        return out.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+# Version desde git (tag o commit); en despliegues sin .git se puede fijar con APP_VERSION
+APP_VERSION = {
+    "version": os.environ.get("APP_VERSION") or _git("describe", "--tags", "--always") or "dev",
+    "commit": _git("rev-parse", "--short", "HEAD"),
+    "date": _git("log", "-1", "--format=%cs"),
+    "repo": "https://github.com/juancmacias/Simulacroexamen",
+}
+
+
+@app.get("/api/version")
+def get_version():
+    return APP_VERSION
 
 
 @app.get("/api/prompt-help")

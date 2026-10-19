@@ -797,6 +797,19 @@ window.addEventListener("beforeunload", (e) => {
 });
 
 loadBankInfo();
+
+async function loadVersion() {
+  try {
+    const v = await (await fetch("/api/version")).json();
+    const link = $("footer-version");
+    link.textContent = "v" + v.version.replace(/^v/, "") + (v.date ? " · " + v.date : "");
+    link.href = v.repo + (v.commit ? "/commit/" + v.commit : "");
+  } catch (_) {}
+}
+loadVersion();
 </script>
+<footer style="text-align:center;margin:40px 0 20px;font-size:.8rem;color:var(--muted);">
+  Simulador de Exámenes · <a id="footer-version" href="https://github.com/juancmacias/Simulacroexamen" target="_blank" rel="noopener" style="color:var(--muted);">versión</a>
+</footer>
 </body>
 </html>
